@@ -279,22 +279,11 @@ var TEAM_REGISTRATION_REVENUE = {
 
 var ACCOUNTING_DATES = {
   "Team Registration Revenue": TEAM_REGISTRATION_REVENUE,
-  "Hotels Revenue": HOTELS_REVENUE,
   "Staff Expense": STAFF_EXPENSE,
-  "Shipping Expense": SHIPPING_EXPENSE,
-  "Scheduling Expense": START_DATE,
-  "Officials Expense": START_DATE,
-  "Printing Expense": START_DATE,
+  "General Expense": START_DATE,
   "Gate Revenue": END_DATE,
-  "Concessions Revenue": END_DATE,
-  "Workers Expense": END_DATE,
-  "Athletic Trainers Expense": END_DATE,
-  "Meals Expense": END_DATE,
+  "General Revenue": END_DATE,
   "Facility Expense": END_DATE,
-  "Media Expense": END_DATE,
-  "Team Accommodations Expense": END_DATE,
-  "Apparel Expense": END_DATE,
-  "Championship Balls Expense": END_DATE,
 };
 
 function getLabelsRow(eventName, accountingLabel) {
