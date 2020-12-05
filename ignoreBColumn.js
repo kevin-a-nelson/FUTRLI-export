@@ -1,3 +1,7 @@
+function createEventKey(website, eventName) {
+  return website + ", " + eventName;
+}
+
 function mergeObjects(destination, source) {
   for (var property in source) {
     if (!source.hasOwnProperty(property)) {
@@ -142,7 +146,6 @@ function nextEmptyCol(col, row) {
   var cell = col + row;
   var value = cellValue(cell);
   while (value) {
-    Logger.log(value);
     col = nextLetter(col);
     cell = col + row;
     value = cellValue(cell);
@@ -168,9 +171,8 @@ function getEventsGrid() {
   var endRow = nextEmptyRow("A", startRow) - 1;
   var columns = getColumns();
   var numOfCols = columns.length;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheets()[1];
-  var grid = sheet.getRange(startRow, 1, endRow, numOfCols).getValues();
+  var ss = SpreadsheetApp.getActiveSheet();
+  var grid = ss.getRange(startRow, 1, endRow, numOfCols).getValues();
   return grid;
 }
 
@@ -179,9 +181,8 @@ function getAccountingGrid() {
   var endRow = nextEmptyRow("A", startRow) - 1;
   var columns = getColumns();
   var numOfCols = columns.length;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheets()[1];
-  var grid = sheet.getRange(startRow, 1, endRow, numOfCols).getValues();
+  var ss = SpreadsheetApp.getActiveSheet();
+  var grid = ss.getRange(startRow, 1, endRow, numOfCols).getValues();
   return grid;
 }
 
@@ -190,10 +191,23 @@ function getEventKeys(eventsGrid) {
   var eventNames = eventsGrid.filter(function (row) {
     return row[0] === "Event Name";
   });
+
+  var eventWebsites = eventsGrid.filter(function (row) {
+    return row[0] === "Website";
+  });
+
+  eventWebsites = eventWebsites[0];
   // eventNames is [[ ... ]] because of .filter
   eventNames = eventNames[0];
-  // Remove the header: "Event Name"
-  return eventNames.slice(1);
+
+  var eventKeys = [];
+  for (let i = 0; i < eventNames.length; i++) {
+    var eventKey = eventWebsites[i] + ", " + eventNames[i];
+    eventKeys.push(eventKey);
+  }
+
+  // Remove the header: "Event NameWebsite"
+  return eventKeys.slice(1);
 }
 
 function getAccountingLabels(accountingGrid) {
@@ -204,7 +218,7 @@ function getAccountingLabels(accountingGrid) {
     labels.push(row[0]);
   });
   // Remove header -> "Accounting Export"
-  return labels.slice(1);
+  return labels;
 }
 
 function createEvent(eventsGrid, accountingGrid, idx) {
@@ -218,9 +232,9 @@ function createEvent(eventsGrid, accountingGrid, idx) {
   return hash;
 }
 
-function createEvents(eventsGrid, accountingGrid, eventNames) {
+function createEvents(eventsGrid, accountingGrid, eventKeys) {
   events = {};
-  eventNames.forEach(function (eventName, idx) {
+  eventKeys.forEach(function (eventName, idx) {
     var event = createEvent(eventsGrid, accountingGrid, idx);
     events[eventName] = event;
     return;
@@ -262,14 +276,19 @@ var TEAM_REGISTRATION_REVENUE = {
   "Prep Hoops": [
     { percent: 20, days: -40 },
     { percent: 60, days: -15 },
-    { percent: 20, days: -10 },
+    { percent: 20, days: -8 },
   ],
   PGH: [
     { percent: 20, days: -40 },
     { percent: 60, days: -15 },
-    { percent: 20, days: -10 },
+    { percent: 20, days: -8 },
   ],
   "Prep Girls Hoops": [
+    { percent: 20, days: -40 },
+    { percent: 60, days: -15 },
+    { percent: 20, days: -8 },
+  ],
+  DEFAULT: [
     { percent: 20, days: -40 },
     { percent: 60, days: -15 },
     { percent: 20, days: -8 },
@@ -355,24 +374,22 @@ function getFinances(events, eventName, accountingLabel) {
   return dates;
 }
 
-function setAccountingMonths(events, eventNames, accountingLabels) {
+function setAccountingMonths(events, eventKeys, accountingLabels) {
   var row = 2;
 
-  eventNames.forEach(function (eventName) {
+  eventKeys.forEach(function (eventName) {
     accountingLabels.forEach(function (accountingLabel) {
-      Logger.log(accountingLabel);
-
       var account = eventName + ": " + accountingLabel;
 
       var website = events[eventName]["Website"];
 
-      if (website === "Prep Dig") {
-        account = "Prep Dig " + account;
-      }
+      // if (website === "Prep Dig") {
+      //   account = "Prep Dig " + account;
+      // }
 
-      if (website === "PGH") {
-        account = "PGH " + account;
-      }
+      // if (website === "PGH") {
+      //   account = "PGH " + account;
+      // }
 
       var finances = getFinances(events, eventName, accountingLabel);
       var row = ["", account, "", "", ""].concat(finances);
@@ -405,21 +422,31 @@ function test() {
   var sheet = ss.getSheets()[0];
 }
 
-function FUTRLIExport() {
-  var eventsGrid = getEventsGrid();
-  var eventsGridNoName = deleteRow(eventsGrid, 0, "Event Name");
-  var eventNames = getEventKeys(eventsGrid);
-  var accountingGrid = getAccountingGrid();
-  var accountingGridNoHeader = accountingGrid.slice(1);
-  var accountingLabels = getAccountingLabels(accountingGrid);
-  var accountingHeaders = getAccountingHeaders();
+function removeColumn(grid, idx) {
+  function removeSecond(element, index) {
+    return index != 1;
+  }
 
-  console.log(accountingLabels);
+  return grid.map(function (row) {
+    return row.filter(removeSecond);
+  });
+}
+
+function FUTRLIExportIgnoreBColumn() {
+  var eventsGrid = getEventsGrid();
+  var eventsGridNoDesc = removeColumn(eventsGrid, 1);
+  var eventsGridNoName = deleteRow(eventsGridNoDesc, 0, "Event Name");
+  var eventKeys = getEventKeys(eventsGridNoDesc);
+  var accountingGrid = getAccountingGrid();
+  var accountingGridNoDesc = removeColumn(accountingGrid, 1);
+  var accountingGridNoHeader = accountingGridNoDesc.slice(1);
+  var accountingLabels = getAccountingLabels(accountingGridNoHeader);
+  var accountingHeaders = getAccountingHeaders();
 
   var events = createEvents(
     eventsGridNoName,
     accountingGridNoHeader,
-    eventNames
+    eventKeys
   );
 
   var sheetName = getSheetName();
@@ -427,5 +454,5 @@ function FUTRLIExport() {
   createNewSheet(sheetName);
   appendRow(accountingHeaders);
 
-  setAccountingMonths(events, eventNames, accountingLabels);
+  setAccountingMonths(events, eventKeys, accountingLabels);
 }
